@@ -133,7 +133,6 @@ impl Marker {
         draw_ctx: &mut DrawingCtx,
         spec: &MarkerSpec,
         line_width: f64,
-        clipping: bool,
         marker: &layout::Marker,
     ) -> DrawResult {
         let mut cascaded = CascadedValues::new_from_node(node);
@@ -212,12 +211,13 @@ impl Marker {
 
         let elt = node.borrow_element();
         let stacking_ctx = Box::new(StackingContext::new(
-            draw_ctx.session(),
+            draw_ctx,
             acquired_nodes,
             &elt,
             transform,
             clip_rect,
             values,
+            &content_viewport,
         ));
 
         draw_ctx.with_discrete_layer(
@@ -225,10 +225,8 @@ impl Marker {
             acquired_nodes,
             &content_viewport,
             None,
-            clipping,
-            &mut |an, dc, new_viewport| {
-                node.draw_children(an, &cascaded, new_viewport, dc, clipping)
-            }, // content_viewport
+            false,
+            &mut |an, dc, new_viewport| node.draw_children(an, &cascaded, new_viewport, dc), // content_viewport
         )
     }
 }
@@ -698,7 +696,6 @@ fn emit_marker_by_node(
     marker: &layout::Marker,
     spec: &MarkerSpec,
     line_width: f64,
-    clipping: bool,
 ) -> DrawResult {
     match acquired_nodes.acquire_ref(marker.node_ref.as_ref().unwrap()) {
         Ok(acquired) => {
@@ -713,7 +710,6 @@ fn emit_marker_by_node(
                 draw_ctx,
                 spec,
                 line_width,
-                clipping,
                 marker,
             )
         }
@@ -759,7 +755,6 @@ pub fn render_markers_for_shape(
     viewport: &Viewport,
     draw_ctx: &mut DrawingCtx,
     acquired_nodes: &mut AcquiredNodes<'_>,
-    clipping: bool,
 ) -> DrawResult {
     if shape.stroke.width.approx_eq_cairo(0.0) {
         return Ok(viewport.empty_bbox());
@@ -789,7 +784,6 @@ pub fn render_markers_for_shape(
                 marker,
                 &spec,
                 shape.stroke.width,
-                clipping,
             )?;
         }
     }
